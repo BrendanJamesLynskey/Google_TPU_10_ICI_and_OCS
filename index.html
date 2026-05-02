@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google TPUs 10 &mdash; ICI, OCS &amp; the 3D Torus</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root { --bg-primary:#0a0a0a; --bg-card:#0d1117; --bg-code:#161b22; --text-primary:#e6edf3; --text-secondary:#8b949e; --accent:#4285F4; --accent-dim:#4285F444; --accent-glow:#4285F433; --accent-2:#EA4335; --accent-3:#FBBC04; --accent-4:#34A853; --border:#21262d; --font-display:'Space Grotesk',sans-serif; --font-mono:'JetBrains Mono','Fira Code',monospace; --font-body:'Inter',sans-serif; --max-width:900px; }
+        *,*::before,*::after { box-sizing:border-box; margin:0; padding:0; }
+        html { scroll-behavior:smooth; }
+        body { background:var(--bg-primary); color:var(--text-primary); font-family:var(--font-body); font-size:17px; line-height:1.7; overflow-x:hidden; }
+        .hero { min-height:100vh; display:flex; flex-direction:column; justify-content:center; align-items:center; padding:2rem 1.5rem; text-align:center; position:relative; }
+        .hero::before { content:''; position:absolute; top:0; left:50%; transform:translateX(-50%); width:700px; height:600px; background:radial-gradient(circle,var(--accent-glow) 0%,transparent 70%); pointer-events:none; z-index:0; }
+        .hero > * { position:relative; z-index:1; }
+        .series-label { font-family:var(--font-mono); font-size:0.85rem; color:var(--accent); letter-spacing:0.15em; text-transform:uppercase; margin-bottom:1rem; }
+        .hero h1 { font-family:var(--font-display); font-size:clamp(2rem,5vw,3.2rem); font-weight:700; line-height:1.2; margin-bottom:1rem; }
+        .hero h1 .accent { color:var(--accent); }
+        .hero .subtitle { font-size:1.1rem; color:var(--text-secondary); max-width:640px; margin-bottom:2rem; }
+        .tags { display:flex; flex-wrap:wrap; gap:0.5rem; justify-content:center; margin-bottom:2.5rem; }
+        .tag { font-family:var(--font-mono); font-size:0.75rem; padding:0.25rem 0.75rem; border-radius:999px; border:1px solid var(--accent); color:var(--accent); background:var(--accent-dim); }
+        .pipeline { display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:0.25rem; margin-bottom:1rem; max-width:var(--max-width); }
+        .pipeline-step { font-family:var(--font-mono); font-size:0.7rem; padding:0.3rem 0.7rem; background:var(--bg-card); border:1px solid var(--border); border-radius:4px; color:var(--text-secondary); }
+        .pipeline-arrow { color:var(--accent); font-size:0.9rem; font-weight:700; }
+        .slide { min-height:100vh; max-width:var(--max-width); margin:0 auto; padding:4rem 1.5rem; position:relative; display:flex; flex-direction:column; justify-content:center; }
+        .slide-number { font-family:var(--font-display); font-size:5rem; font-weight:700; color:var(--accent-dim); position:absolute; top:2rem; right:1.5rem; line-height:1; }
+        .slide h2 { font-family:var(--font-display); font-size:1.9rem; font-weight:700; color:var(--accent); margin-bottom:1.5rem; line-height:1.25; }
+        .slide h3 { font-family:var(--font-display); font-size:1.3rem; font-weight:600; color:var(--text-primary); margin-top:1.5rem; margin-bottom:0.75rem; }
+        .slide p { margin-bottom:1rem; color:var(--text-secondary); }
+        .slide p strong { color:var(--text-primary); }
+        .slide ul, .slide ol { margin-bottom:1rem; padding-left:1.5rem; color:var(--text-secondary); }
+        .slide li { margin-bottom:0.4rem; }
+        .slide li strong { color:var(--text-primary); }
+        .table-wrap { overflow-x:auto; margin:1.25rem 0; border-radius:8px; border:1px solid var(--border); }
+        table { width:100%; border-collapse:collapse; font-size:0.9rem; }
+        th { background:var(--bg-code); color:var(--accent); font-weight:600; text-align:left; padding:0.75rem 1rem; border-bottom:1px solid var(--border); font-family:var(--font-display); white-space:nowrap; }
+        td { padding:0.6rem 1rem; border-bottom:1px solid var(--border); color:var(--text-secondary); vertical-align:top; }
+        tr:last-child td { border-bottom:none; }
+        tr:nth-child(even) td { background:rgba(13,17,23,0.5); }
+        .diagram-grid { display:grid; gap:0.75rem; margin:1.5rem 0; padding:1.5rem; background:var(--bg-card); border:1px solid var(--border); border-radius:8px; }
+        .diagram-grid.cols-2 { grid-template-columns:1fr 1fr; }
+        .diagram-grid.cols-3 { grid-template-columns:1fr 1fr 1fr; }
+        .diagram-panel { padding:1rem; background:var(--bg-code); border:1px solid var(--border); border-radius:6px; }
+        .diagram-panel.accent-border { border-left:3px solid var(--accent); }
+        .diagram-panel.r { border-left:3px solid var(--accent-2); }
+        .diagram-panel.y { border-left:3px solid var(--accent-3); }
+        .diagram-panel.g { border-left:3px solid var(--accent-4); }
+        .diagram-panel h4 { font-family:var(--font-display); font-size:1rem; color:var(--accent); margin-bottom:0.5rem; }
+        .diagram-panel.r h4 { color:var(--accent-2); }
+        .diagram-panel.y h4 { color:var(--accent-3); }
+        .diagram-panel.g h4 { color:var(--accent-4); }
+        .diagram-panel p, .diagram-panel ul { font-size:0.9rem; }
+        .callout { background:var(--bg-card); border-left:3px solid var(--accent); border-radius:0 8px 8px 0; padding:1rem 1.25rem; margin:1.25rem 0; }
+        .callout p { margin-bottom:0; }
+        .callout .callout-label { font-family:var(--font-mono); font-size:0.75rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.3rem; }
+        .canvas-wrap { background:var(--bg-card); border:1px solid var(--border); border-radius:8px; padding:1rem; margin:1.25rem 0; overflow-x:auto; }
+        .canvas-wrap canvas, .canvas-wrap svg { display:block; margin:0 auto; max-width:100%; }
+        .quote { font-family:var(--font-display); font-size:1.05rem; font-style:italic; color:var(--text-primary); padding:1rem 1.5rem; border-left:3px solid var(--accent); background:var(--bg-card); margin:1.25rem 0; border-radius:0 8px 8px 0; }
+        .quote .attr { display:block; margin-top:0.5rem; font-style:normal; font-size:0.85rem; color:var(--text-secondary); font-family:var(--font-mono); }
+        .contents-list { list-style:none; padding-left:0; counter-reset:contents; }
+        .contents-list li { counter-increment:contents; padding:0.6rem 0; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:1rem; }
+        .contents-list li:last-child { border-bottom:none; }
+        .contents-list li::before { content:counter(contents,decimal-leading-zero); font-family:var(--font-mono); font-size:0.85rem; color:var(--accent); min-width:2rem; }
+        .contents-list a { color:var(--text-primary); text-decoration:none; }
+        .contents-list a:hover { color:var(--accent); }
+        .footer { text-align:center; padding:3rem 1.5rem; color:var(--text-secondary); font-size:0.85rem; border-top:1px solid var(--border); max-width:var(--max-width); margin:0 auto; }
+        .footer a { color:var(--accent); text-decoration:none; }
+        @media (max-width:640px) { .slide { padding:3rem 1rem; min-height:auto; } .slide-number { font-size:3rem; top:1.5rem; right:1rem; } .slide h2 { font-size:1.5rem; } .diagram-grid.cols-2,.diagram-grid.cols-3 { grid-template-columns:1fr; } .hero h1 { font-size:1.8rem; } table { font-size:0.78rem; } }
+    </style>
+</head>
+<body>
+
+<header class="hero">
+    <div class="series-label">Google TPUs Series &mdash; Presentation 10</div>
+    <h1>ICI, <span class="accent">OCS</span> &amp; the 3D Torus</h1>
+    <p class="subtitle">How a TPU pod is wired up. Custom electrical SerDes, 2D vs 3D torus, the Palomar 3D-MEMS optical switch, twisted-torus topologies, healing around faulty cubes, and the multipod fabric over Jupiter.</p>
+    <div class="tags">
+        <span class="tag">ICI</span><span class="tag">SerDes</span>
+        <span class="tag">2D torus</span><span class="tag">3D torus</span>
+        <span class="tag">Palomar OCS</span><span class="tag">3D MEMS</span>
+        <span class="tag">Jupiter DCN</span>
+    </div>
+    <div class="pipeline">
+        <span class="pipeline-step">SerDes lane</span><span class="pipeline-arrow">&rarr;</span>
+        <span class="pipeline-step">ICI link</span><span class="pipeline-arrow">&rarr;</span>
+        <span class="pipeline-step">cube (4×4×4 = 64 chips)</span><span class="pipeline-arrow">&rarr;</span>
+        <span class="pipeline-step">Palomar OCS</span><span class="pipeline-arrow">&rarr;</span>
+        <span class="pipeline-step">pod (3D torus)</span><span class="pipeline-arrow">&rarr;</span>
+        <span class="pipeline-step">Jupiter DCN</span><span class="pipeline-arrow">&rarr;</span>
+        <span class="pipeline-step">multipod</span>
+    </div>
+</header>
+
+<section class="slide" id="slide-00">
+    <div class="slide-number">00</div>
+    <h2>Topics We'll Cover</h2>
+    <ul class="contents-list">
+        <li><a href="#slide-01">ICI &mdash; What It Actually Is</a></li>
+        <li><a href="#slide-02">2D vs 3D Torus &mdash; The Topology Choice</a></li>
+        <li><a href="#slide-03">Cubes, Slices, Pods &mdash; The Vocabulary</a></li>
+        <li><a href="#slide-04">Palomar &mdash; Inside the Optical Circuit Switch</a></li>
+        <li><a href="#slide-05">Why Optical, Not Electrical?</a></li>
+        <li><a href="#slide-06">Twisted Tori &amp; Job-Time Topology</a></li>
+        <li><a href="#slide-07">All-Reduce on a 3D Torus</a></li>
+        <li><a href="#slide-08">Healing Around Faulty Cubes</a></li>
+        <li><a href="#slide-09">Jupiter DCN &amp; Multipod</a></li>
+        <li><a href="#slide-10">ICI Bandwidth Across TPU Generations</a></li>
+        <li><a href="#slide-11">Mission Apollo &mdash; OCS Outside the TPU</a></li>
+        <li><a href="#slide-12">Cheat Sheet</a></li>
+    </ul>
+</section>
+
+<section class="slide" id="slide-01">
+    <div class="slide-number">01</div>
+    <h2>ICI &mdash; What It Actually Is</h2>
+    <p><strong>Inter-Chip Interconnect</strong> is Google's custom chip-to-chip link. It is not InfiniBand, not Ethernet, not NVLink. It exists for one reason: to make the TPU pod look like a single coherent compute substrate to the compiler, with the lowest possible latency and the highest bandwidth that fits on the package.</p>
+
+    <div class="diagram-grid cols-2">
+        <div class="diagram-panel accent-border">
+            <h4>Physical</h4>
+            <ul>
+                <li>Custom Google electrical SerDes lanes, several per ICI port.</li>
+                <li>Per-port bidirectional bandwidth grew from ~62 GB/s aggregate (v2) to <strong>1.2 TB/s bidir</strong> (Ironwood).</li>
+                <li>Ports per chip: 4 (v2/v3, 2D torus) or 6 (v4 onwards p-class, 3D torus); 4 on the e-class chips.</li>
+                <li>Cabled (between cubes / racks) and on-package (within a board) variants.</li>
+            </ul>
+        </div>
+        <div class="diagram-panel y">
+            <h4>Logical</h4>
+            <ul>
+                <li>Each chip has direct ICI peers (its torus neighbours).</li>
+                <li>Hardware support for collective primitives: all-reduce, all-gather, reduce-scatter, all-to-all.</li>
+                <li>Sub-microsecond latency between adjacent chips; hop-by-hop routing for non-neighbours.</li>
+                <li>Software view (via XLA): a chip can "address" any HBM in its slice; the compiler turns that into ICI transfers.</li>
+            </ul>
+        </div>
+    </div>
+
+    <h3>Why custom?</h3>
+    <p>NVLink and InfiniBand both came with cost, latency, or proprietary ecosystem disadvantages in the 2016 TPU v2 design window. Google had a network-silicon team that had built the Jupiter switch ASICs; doing custom SerDes for chip-to-chip was a smaller leap than it sounds. Eight years later, the proprietary fabric is one of the TPU programme's main competitive moats.</p>
+</section>
+
+<section class="slide" id="slide-02">
+    <div class="slide-number">02</div>
+    <h2>2D vs 3D Torus &mdash; The Topology Choice</h2>
+
+    <div class="canvas-wrap">
+        <svg viewBox="0 0 800 280" width="800" height="280" xmlns="http://www.w3.org/2000/svg">
+            <style>
+                .chip { fill:#161b22; stroke:#21262d; stroke-width:1; }
+                .acc { fill:rgba(66,133,244,0.4); stroke:#4285F4; }
+                .lnk { stroke:#4285F4; stroke-width:1.4; fill:none; }
+                .lnk.zaxis { stroke:#34A853; stroke-width:1.4; }
+                .lbl { fill:#e6edf3; font-family:'Space Grotesk',sans-serif; font-size:13px; text-anchor:middle; }
+                .sublbl { fill:#8b949e; font-family:'JetBrains Mono',monospace; font-size:10px; text-anchor:middle; }
+            </style>
+            <!-- 2D torus -->
+            <text x="170" y="22" class="lbl">2D Torus (e-class) — 4 ICI links/chip</text>
+            <g>
+                <rect class="chip" x="80" y="50" width="30" height="30"/><rect class="chip" x="120" y="50" width="30" height="30"/><rect class="chip acc" x="160" y="50" width="30" height="30"/><rect class="chip" x="200" y="50" width="30" height="30"/><rect class="chip" x="240" y="50" width="30" height="30"/>
+                <rect class="chip" x="80" y="90" width="30" height="30"/><rect class="chip acc" x="120" y="90" width="30" height="30"/><rect class="chip" x="160" y="90" width="30" height="30"/><rect class="chip" x="200" y="90" width="30" height="30"/><rect class="chip" x="240" y="90" width="30" height="30"/>
+                <rect class="chip" x="80" y="130" width="30" height="30"/><rect class="chip" x="120" y="130" width="30" height="30"/><rect class="chip" x="160" y="130" width="30" height="30"/><rect class="chip" x="200" y="130" width="30" height="30"/><rect class="chip" x="240" y="130" width="30" height="30"/>
+                <rect class="chip" x="80" y="170" width="30" height="30"/><rect class="chip" x="120" y="170" width="30" height="30"/><rect class="chip" x="160" y="170" width="30" height="30"/><rect class="chip" x="200" y="170" width="30" height="30"/><rect class="chip" x="240" y="170" width="30" height="30"/>
+                <rect class="chip" x="80" y="210" width="30" height="30"/><rect class="chip" x="120" y="210" width="30" height="30"/><rect class="chip" x="160" y="210" width="30" height="30"/><rect class="chip" x="200" y="210" width="30" height="30"/><rect class="chip" x="240" y="210" width="30" height="30"/>
+            </g>
+            <!-- horizontal links -->
+            <line class="lnk" x1="110" y1="65" x2="240" y2="65"/>
+            <line class="lnk" x1="110" y1="105" x2="240" y2="105"/>
+            <line class="lnk" x1="110" y1="145" x2="240" y2="145"/>
+            <line class="lnk" x1="110" y1="185" x2="240" y2="185"/>
+            <line class="lnk" x1="110" y1="225" x2="240" y2="225"/>
+            <line class="lnk" x1="95" y1="80" x2="95" y2="210" stroke-dasharray="3 3"/>
+            <line class="lnk" x1="135" y1="80" x2="135" y2="210"/>
+            <line class="lnk" x1="175" y1="80" x2="175" y2="210"/>
+            <line class="lnk" x1="215" y1="80" x2="215" y2="210"/>
+            <line class="lnk" x1="255" y1="80" x2="255" y2="210" stroke-dasharray="3 3"/>
+            <text x="170" y="262" class="sublbl">used by v2 / v3 / v5e / Trillium &mdash; up to 256 chips</text>
+            <!-- 3D torus -->
+            <text x="600" y="22" class="lbl">3D Torus (p-class) — 6 ICI links/chip</text>
+            <!-- back layer -->
+            <g opacity="0.4">
+                <rect class="chip" x="450" y="60" width="22" height="22"/><rect class="chip" x="478" y="60" width="22" height="22"/><rect class="chip" x="506" y="60" width="22" height="22"/>
+                <rect class="chip" x="450" y="88" width="22" height="22"/><rect class="chip acc" x="478" y="88" width="22" height="22"/><rect class="chip" x="506" y="88" width="22" height="22"/>
+                <rect class="chip" x="450" y="116" width="22" height="22"/><rect class="chip" x="478" y="116" width="22" height="22"/><rect class="chip" x="506" y="116" width="22" height="22"/>
+            </g>
+            <!-- middle -->
+            <g opacity="0.7">
+                <rect class="chip" x="510" y="80" width="22" height="22"/><rect class="chip" x="538" y="80" width="22" height="22"/><rect class="chip" x="566" y="80" width="22" height="22"/>
+                <rect class="chip" x="510" y="108" width="22" height="22"/><rect class="chip acc" x="538" y="108" width="22" height="22"/><rect class="chip" x="566" y="108" width="22" height="22"/>
+                <rect class="chip" x="510" y="136" width="22" height="22"/><rect class="chip" x="538" y="136" width="22" height="22"/><rect class="chip" x="566" y="136" width="22" height="22"/>
+            </g>
+            <!-- front -->
+            <g>
+                <rect class="chip" x="570" y="100" width="22" height="22"/><rect class="chip" x="598" y="100" width="22" height="22"/><rect class="chip" x="626" y="100" width="22" height="22"/>
+                <rect class="chip" x="570" y="128" width="22" height="22"/><rect class="chip acc" x="598" y="128" width="22" height="22"/><rect class="chip" x="626" y="128" width="22" height="22"/>
+                <rect class="chip" x="570" y="156" width="22" height="22"/><rect class="chip" x="598" y="156" width="22" height="22"/><rect class="chip" x="626" y="156" width="22" height="22"/>
+            </g>
+            <!-- z-axis links -->
+            <line class="lnk zaxis" x1="489" y1="99" x2="549" y2="119"/>
+            <line class="lnk zaxis" x1="549" y1="119" x2="609" y2="139"/>
+            <text x="600" y="220" class="sublbl">used by v4 / v5p / Ironwood — up to 9,216 chips</text>
+            <text x="600" y="234" class="sublbl">3 axes × 2 directions = 6 ICI links per chip</text>
+            <text x="600" y="248" class="sublbl">+ Palomar OCS layer for inter-cube reconfigurability</text>
+        </svg>
+    </div>
+
+    <h3>Diameter and bisection</h3>
+    <ul>
+        <li><strong>2D torus</strong>, 16&times;16 = 256 chips: diameter 16 hops, bisection 32 links.</li>
+        <li><strong>3D torus</strong>, 16&times;24&times;24 = 9,216 chips: diameter ~32 hops, bisection ~1,150 links.</li>
+        <li>For matched chip count, 3D torus has dramatically lower diameter and dramatically higher bisection &mdash; both critical for collective communication.</li>
+    </ul>
+
+    <p>Why does e-class stay 2D? Cost. 4 ICI ports per chip vs 6 saves silicon and packaging. For 256-chip pods (the e-class size), 2D is fine; for 9,216-chip pods (p-class), 2D would be unworkable.</p>
+</section>
+
+<section class="slide" id="slide-03">
+    <div class="slide-number">03</div>
+    <h2>Cubes, Slices, Pods &mdash; The Vocabulary</h2>
+    <p>Three terms that appear constantly in TPU documentation. They are not synonyms.</p>
+
+    <div class="diagram-grid cols-3">
+        <div class="diagram-panel accent-border">
+            <h4>Cube</h4>
+            <p>The smallest <em>physical</em> unit of a 3D torus. Typically <strong>4&times;4&times;4 = 64 chips</strong> on v4/v5p. Cabled internally with fixed ICI; cabled externally to the OCS for everything bigger.</p>
+        </div>
+        <div class="diagram-panel y">
+            <h4>Slice</h4>
+            <p>A <em>logical</em>, schedulable subset of a pod. Looks to the user like one 3D torus of dimensions they pick. The OCS makes any cube-multiple slice possible.</p>
+        </div>
+        <div class="diagram-panel g">
+            <h4>Pod</h4>
+            <p>The full ICI-coherent compute domain. v4: 4,096 chips. v5p: 8,960 chips. Ironwood: 9,216 chips. Trillium pod is 256-chip (e-class shape).</p>
+        </div>
+    </div>
+
+    <h3>Multipod</h3>
+    <p>Beyond a pod is <strong>multipod</strong> &mdash; multiple pods connected by Jupiter DCN, used by Multislice. From the compiler's view, multipod is a coarser-grained mesh sitting on top of the pods. ICI gives you sub-microsecond latency inside a pod; Jupiter gives you microseconds between them.</p>
+
+    <div class="callout">
+        <div class="callout-label">A common misreading</div>
+        <p>"TPU pod" sometimes refers to a literal physical structure (the 256-chip v3 rack-of-racks) and sometimes to the logical scheduling unit (the 8,960-chip v5p ICI domain). Modern Cloud TPU documentation uses <em>pod</em> to mean the logical ICI domain; the physical rack-level structure is implicit.</p>
+    </div>
+</section>
+
+<section class="slide" id="slide-04">
+    <div class="slide-number">04</div>
+    <h2>Palomar &mdash; Inside the Optical Circuit Switch</h2>
+    <p>Palomar is Google's bespoke 3D-MEMS optical circuit switch, introduced for v4 and disclosed in the ISCA 2023 paper.</p>
+
+    <div class="quote">
+        Each Palomar OCS is a 136-port (128 + 8 spares) reconfigurable optical switch using 3D-MEMS mirrors with sub-millisecond reconfiguration. Forty-eight Palomar OCSes interconnect the 64 cubes of a 4,096-chip TPU v4 supercomputer.
+        <span class="attr">&mdash; Jouppi et al., ISCA 2023 (arXiv:2304.01433)</span>
+    </div>
+
+    <h3>The optical path</h3>
+    <ol>
+        <li>An ICI cable carries data as <strong>optical signals over fibre</strong> from a TPU board's network ASIC to a Palomar OCS port.</li>
+        <li>The light enters the OCS, passes through micro-lenses, and lands on a <strong>3D-MEMS mirror</strong>: a microscopic tiltable mirror in a 12&times;12 array (one per port).</li>
+        <li>The mirror's tilt angle is set by a controller, sending the beam onto a second mirror plane.</li>
+        <li>The second mirror reflects the beam toward the chosen output port.</li>
+        <li>The light exits via fibre to the destination TPU board.</li>
+        <li>The data is never deserialised inside the switch &mdash; it stays optical end-to-end.</li>
+    </ol>
+
+    <div class="diagram-grid cols-3">
+        <div class="diagram-panel accent-border">
+            <h4>Reconfiguration time</h4>
+            <p>Sub-millisecond. The mirrors tilt mechanically but only a few hundred microns; settle time is dominated by piezoelectric damping.</p>
+        </div>
+        <div class="diagram-panel y">
+            <h4>Port count</h4>
+            <p>136 = 128 active + 8 spares. The spares are used to repair damaged ports or to round-robin against mirror wear.</p>
+        </div>
+        <div class="diagram-panel g">
+            <h4>Power &amp; cost</h4>
+            <p>OCSes are <strong>&lt;5% of system cost</strong> and <strong>&lt;3% of system power</strong> vs an electrical-switch equivalent for the v4 pod.</p>
+        </div>
+    </div>
+</section>
+
+<section class="slide" id="slide-05">
+    <div class="slide-number">05</div>
+    <h2>Why Optical, Not Electrical?</h2>
+
+    <div class="diagram-grid cols-2">
+        <div class="diagram-panel y">
+            <h4>The OEO problem</h4>
+            <ul>
+                <li>An electrical switch must <strong>O</strong>ptical &rarr; <strong>E</strong>lectrical &rarr; <strong>O</strong>ptical at every port.</li>
+                <li>Each conversion costs energy (pJ/bit), latency (nanoseconds), and silicon area for the SerDes.</li>
+                <li>At pod scale (thousands of links), this dominates network power.</li>
+            </ul>
+        </div>
+        <div class="diagram-panel g">
+            <h4>OCS skips it</h4>
+            <ul>
+                <li>Light enters, mirror tilts, light exits. No conversion.</li>
+                <li>No retiming, no buffering, no protocol overhead inside the switch.</li>
+                <li>Power and latency in the switch are <em>independent of bandwidth</em> &mdash; doubling bandwidth doesn't double switch power.</li>
+            </ul>
+        </div>
+    </div>
+
+    <h3>The deeper reason: bandwidth grows; switching latency must shrink</h3>
+    <p>For a packet switch, latency goes up as you push more bandwidth through (queuing, contention). For a circuit switch, you set up the path once and stream data through it forever. ML workloads have <em>predictable</em> communication patterns &mdash; you all-reduce the same gradients every step. That's exactly the workload a circuit switch is good at.</p>
+
+    <div class="callout">
+        <div class="callout-label">Why this hadn't been done before</div>
+        <p>Datacenter networking had been firmly packet-switched since the 1990s because workloads were unpredictable (web, search, analytics). ML training in 2020 broke that assumption: <em>the same all-reduce, every step, forever</em>. That's the workload OCS is designed for. Google's Mission Apollo paper (2022) generalises the idea to the rest of the datacenter network.</p>
+    </div>
+</section>
+
+<section class="slide" id="slide-06">
+    <div class="slide-number">06</div>
+    <h2>Twisted Tori &amp; Job-Time Topology</h2>
+    <p>Because OCS reconfigures per job, v4-and-later pods can present different <em>topology shapes</em> to different jobs without recabling. The most useful new shape is the <strong>twisted torus</strong>.</p>
+
+    <div class="canvas-wrap">
+        <svg viewBox="0 0 700 220" width="700" height="220" xmlns="http://www.w3.org/2000/svg">
+            <style>
+                .chip { fill:#161b22; stroke:#21262d; }
+                .acc { fill:rgba(66,133,244,0.4); stroke:#4285F4; }
+                .lnk { stroke:#4285F4; fill:none; }
+                .twist { stroke:#EA4335; stroke-width:2; fill:none; stroke-dasharray:4 3; }
+                .lbl { fill:#e6edf3; font-family:'Space Grotesk',sans-serif; font-size:12px; text-anchor:middle; }
+                .sublbl { fill:#8b949e; font-family:'JetBrains Mono',monospace; font-size:10px; text-anchor:middle; }
+            </style>
+            <text x="160" y="22" class="lbl">Standard 4×4 torus</text>
+            <g>
+                <rect class="chip" x="40" y="50" width="20" height="20"/><rect class="chip" x="80" y="50" width="20" height="20"/><rect class="chip" x="120" y="50" width="20" height="20"/><rect class="chip" x="160" y="50" width="20" height="20"/>
+                <rect class="chip" x="40" y="90" width="20" height="20"/><rect class="chip" x="80" y="90" width="20" height="20"/><rect class="chip" x="120" y="90" width="20" height="20"/><rect class="chip" x="160" y="90" width="20" height="20"/>
+                <rect class="chip" x="40" y="130" width="20" height="20"/><rect class="chip" x="80" y="130" width="20" height="20"/><rect class="chip" x="120" y="130" width="20" height="20"/><rect class="chip" x="160" y="130" width="20" height="20"/>
+                <rect class="chip" x="40" y="170" width="20" height="20"/><rect class="chip" x="80" y="170" width="20" height="20"/><rect class="chip" x="120" y="170" width="20" height="20"/><rect class="chip" x="160" y="170" width="20" height="20"/>
+            </g>
+            <line class="lnk" x1="60" y1="60" x2="180" y2="60"/>
+            <line class="lnk" x1="60" y1="100" x2="180" y2="100"/>
+            <line class="lnk" x1="60" y1="140" x2="180" y2="140"/>
+            <line class="lnk" x1="60" y1="180" x2="180" y2="180"/>
+            <path class="lnk" d="M 50 70 Q 30 120 50 170" stroke-dasharray="3 3"/>
+            <path class="lnk" d="M 170 70 Q 200 120 170 170" stroke-dasharray="3 3"/>
+            <text x="160" y="208" class="sublbl">wrap-around: row N to row N (column 0 ↔ column N-1)</text>
+
+            <text x="500" y="22" class="lbl">Twisted 4×4 torus</text>
+            <g>
+                <rect class="chip" x="380" y="50" width="20" height="20"/><rect class="chip" x="420" y="50" width="20" height="20"/><rect class="chip" x="460" y="50" width="20" height="20"/><rect class="chip" x="500" y="50" width="20" height="20"/>
+                <rect class="chip" x="380" y="90" width="20" height="20"/><rect class="chip" x="420" y="90" width="20" height="20"/><rect class="chip" x="460" y="90" width="20" height="20"/><rect class="chip" x="500" y="90" width="20" height="20"/>
+                <rect class="chip" x="380" y="130" width="20" height="20"/><rect class="chip" x="420" y="130" width="20" height="20"/><rect class="chip" x="460" y="130" width="20" height="20"/><rect class="chip" x="500" y="130" width="20" height="20"/>
+                <rect class="chip" x="380" y="170" width="20" height="20"/><rect class="chip" x="420" y="170" width="20" height="20"/><rect class="chip" x="460" y="170" width="20" height="20"/><rect class="chip" x="500" y="170" width="20" height="20"/>
+            </g>
+            <line class="lnk" x1="400" y1="60" x2="520" y2="60"/>
+            <line class="lnk" x1="400" y1="100" x2="520" y2="100"/>
+            <line class="lnk" x1="400" y1="140" x2="520" y2="140"/>
+            <line class="lnk" x1="400" y1="180" x2="520" y2="180"/>
+            <!-- twisted wrap-arounds: skip a row -->
+            <path class="twist" d="M 390 60 C 350 100 350 130 390 100"/>
+            <path class="twist" d="M 510 100 C 560 130 560 170 510 140"/>
+            <text x="500" y="208" class="sublbl">wrap-around shifts by 1 row → cuts diameter</text>
+        </svg>
+    </div>
+
+    <h3>Why twisting helps</h3>
+    <p>In a standard <em>k</em>&times;<em>k</em> torus, the diameter is 2&times;floor(<em>k</em>/2) = <em>k</em>. In a twisted torus where the wrap-around is offset by some constant <em>m</em>, the diameter can drop to ~&radic;(2)&times;<em>k</em> when <em>m</em> is well-chosen. For the 9,216-chip Ironwood pod, that's the difference between a worst-case 32-hop all-to-all and a worst-case 22-hop all-to-all &mdash; significant for tail-latency-sensitive collectives.</p>
+
+    <p>You cannot wire a twisted torus in fixed cabling because the offset depends on slice shape. <strong>Twisted topology is a free upgrade you get from having an OCS.</strong></p>
+</section>
+
+<section class="slide" id="slide-07">
+    <div class="slide-number">07</div>
+    <h2>All-Reduce on a 3D Torus</h2>
+    <p>The most important communication pattern in TPU pod-scale training. Used after every gradient step in data-parallel and tensor-parallel training, after every softmax in tensor-parallel attention, after every expert pass in MoE.</p>
+
+    <h3>The textbook 3D-torus algorithm</h3>
+    <ol>
+        <li><strong>Reduce-scatter along X.</strong> Each row of chips reduces and scatters its values along the X axis. Each chip ends up with one X-stride of the partial sum.</li>
+        <li><strong>Reduce-scatter along Y.</strong> Same, perpendicular axis.</li>
+        <li><strong>Reduce-scatter along Z.</strong> Same, third axis.</li>
+        <li><strong>All-gather along Z, Y, X</strong>, in reverse, to broadcast the final result.</li>
+    </ol>
+
+    <p>Total time is approximately <em>(N-1)/N</em> &times; (gradient size / per-link bandwidth) per axis. For a 9,216-chip pod arranged as 16&times;24&times;24 with 600 GB/s per link per direction, an all-reduce on a 1 GB gradient takes well under 10 ms wall-clock.</p>
+
+    <div class="callout">
+        <div class="callout-label">Hardware all-reduce</div>
+        <p>The TPU's ICI link controllers contain dedicated reduce/gather hardware &mdash; the chip doesn't have to use its vector unit to do the additions during an all-reduce. This is one of the underrated parts of the architecture: <strong>collective operations don't steal compute time from the matmul</strong>. NVIDIA achieves the same with NCCL but it runs on the SMs and competes with kernels.</p>
+    </div>
+</section>
+
+<section class="slide" id="slide-08">
+    <div class="slide-number">08</div>
+    <h2>Healing Around Faulty Cubes</h2>
+    <p>At 9,216-chip scale, hardware will fail mid-job. The OCS makes that survivable.</p>
+
+    <ol>
+        <li>A board's monitoring detects an unrecoverable error on one of its 64 chips.</li>
+        <li>The OCS controller is notified; a hot-spare cube (kept reserved for this purpose) is brought online.</li>
+        <li>The mirrors that route to the failed cube are tilted to point at the spare cube instead.</li>
+        <li>The training job pauses for a few hundred milliseconds (single ICI heartbeat), then resumes.</li>
+        <li>Loss of progress: a few seconds at most. Compare to a checkpoint-and-restart cost of minutes.</li>
+    </ol>
+
+    <h3>What this is worth</h3>
+    <p>For a 50-day PaLM-class run on 6,144 chips, you expect somewhere between 5 and 20 chip failures. Each unrecoverable failure on a non-OCS pod would mean: stop, checkpoint, debug, replace, resume &mdash; conservatively an hour. With OCS hot-spare rerouting, each failure costs &lt;1 second. <strong>Over a 50-day run, that's the difference between losing one day to faults and losing none.</strong></p>
+
+    <div class="callout">
+        <div class="callout-label">The NSDI 2024 paper</div>
+        <p>"Resiliency at Scale: Managing Google's TPUv4 ML Supercomputer" (USENIX NSDI 2024) is the systems-engineering counterpart to ISCA 2023. It documents the failure modes seen in production v4 pods and the orchestration strategies (checkpointing cadence, gradient-skip thresholds, hot-spare reservation policy) that keep multi-week jobs running. Worth reading even outside a TPU context.</p>
+    </div>
+</section>
+
+<section class="slide" id="slide-09">
+    <div class="slide-number">09</div>
+    <h2>Jupiter DCN &amp; Multipod</h2>
+    <p>Beyond the pod is Google's <strong>Jupiter datacenter network</strong> &mdash; the same network fabric that connects every other Google service. Modern Jupiter is itself OCS-based after Mission Apollo (2022).</p>
+
+    <div class="diagram-grid cols-2">
+        <div class="diagram-panel accent-border">
+            <h4>What Jupiter is</h4>
+            <ul>
+                <li>Hierarchical fat-tree of OCS switches and electrical packet switches.</li>
+                <li>Bisection bandwidth at the datacenter level: <strong>13 Pb/s</strong> for a Trillium multipod region.</li>
+                <li>Connects every TPU pod, every CPU rack, every storage node in a region.</li>
+                <li>Latency between pods: tens of microseconds typical.</li>
+            </ul>
+        </div>
+        <div class="diagram-panel y">
+            <h4>What multipod uses it for</h4>
+            <ul>
+                <li>Cross-pod gradient all-reduce in data-parallel training spanning multiple pods.</li>
+                <li>Pipeline-parallel sharding across pods.</li>
+                <li>Pathways control-plane traffic (compilation cache, scheduling, monitoring).</li>
+                <li>Disaggregated checkpoint storage and dataset streaming.</li>
+            </ul>
+        </div>
+    </div>
+
+    <h3>Multipod composition limits</h3>
+    <ul>
+        <li>Trillium multipod: up to ~100,000 chips in one Jupiter optical-network domain.</li>
+        <li>v5p multipod: similar order; explicit Multislice support since Aug 2023.</li>
+        <li>Ironwood: ICI-coherent at 9,216; multipod scales further over Jupiter.</li>
+    </ul>
+
+    <p>The relationship is layered: <strong>ICI inside a pod, OCS inside the pod for topology reconfiguration, Jupiter for inter-pod, packet-switching only at the very top.</strong></p>
+</section>
+
+<section class="slide" id="slide-10">
+    <div class="slide-number">10</div>
+    <h2>ICI Bandwidth Across TPU Generations</h2>
+    <div class="table-wrap">
+        <table>
+            <thead><tr><th>Generation</th><th>Per-chip ICI (bidir)</th><th>Ports</th><th>Topology</th><th>Pod</th></tr></thead>
+            <tbody>
+                <tr><td>v1</td><td>—</td><td>0 (PCIe only)</td><td>—</td><td>1 chip</td></tr>
+                <tr><td>v2</td><td>~62 GB/s aggregate</td><td>4</td><td>2D torus</td><td>256</td></tr>
+                <tr><td>v3</td><td>~82 GB/s aggregate (estimated)</td><td>4</td><td>2D torus</td><td>1024</td></tr>
+                <tr><td>v4</td><td>~300 GB/s</td><td>6</td><td>3D torus + OCS</td><td>4096</td></tr>
+                <tr><td>v5e</td><td>400 GB/s</td><td>4</td><td>2D torus</td><td>256</td></tr>
+                <tr><td>v5p</td><td>1.2 TB/s</td><td>6</td><td>3D torus + OCS</td><td>8960</td></tr>
+                <tr><td>Trillium (v6e)</td><td>800 GB/s</td><td>4</td><td>2D torus</td><td>256</td></tr>
+                <tr><td>Ironwood (v7)</td><td>1.2 TB/s</td><td>6</td><td>3D torus + OCS</td><td>9216</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <h3>Reading the trends</h3>
+    <ul>
+        <li>p-class chips have always doubled the ICI bandwidth of the previous p-class. v4 (300 GB/s) &rarr; v5p (1.2 TB/s) &rarr; Ironwood (1.2 TB/s, but at higher per-link efficiency).</li>
+        <li>e-class chips track p-class with a one-generation lag, at half the port count. Trillium's 800 GB/s on 4 ports is comparable per-link to v5p's 1.2 TB/s on 6.</li>
+        <li>Per-link bandwidth keeps growing &mdash; modern SerDes runs at 200 Gbps per lane and is on track for 400 Gbps.</li>
+    </ul>
+</section>
+
+<section class="slide" id="slide-11">
+    <div class="slide-number">11</div>
+    <h2>Mission Apollo &mdash; OCS Outside the TPU</h2>
+    <p>The Palomar OCS is the most visible Google use of optical circuit switching, but not the only one. <em>"Mission Apollo: A Modern Datacenter Network with OCS"</em> (Google, arXiv:2208.10041, 2022) describes how the same technology was rolled out across the rest of the Jupiter network.</p>
+
+    <h3>What Apollo did</h3>
+    <ul>
+        <li>Replaced the spine layer of Google's datacenter networks with optical circuit switches at scale.</li>
+        <li>Power per switched bit dropped by an order of magnitude.</li>
+        <li>Topology became reconfigurable at coarse time scales (hours to days) for traffic engineering.</li>
+        <li>Total deployment: tens of thousands of OCS units across Google datacenters by 2022.</li>
+    </ul>
+
+    <p>The TPU's Palomar is, in effect, the <em>fine-grained, fast-reconfiguration</em> sibling of Apollo &mdash; reconfigure per-job vs Apollo's per-day. They share supply chain (Google's optical-component partner network), share physics (3D-MEMS), share controller code, and share organisational ownership.</p>
+
+    <div class="callout">
+        <div class="callout-label">Why this matters strategically</div>
+        <p>Most hyperscalers buy network silicon from Broadcom or Marvell; the network is procurement, not architecture. Google designs its own OCS, its own network ASICs, and its own custom SerDes for both ICI and Jupiter. The TPU isn't just a chip; it's a chip <em>plus a network</em>. Reproducing the TPU advantage requires reproducing both halves &mdash; which is why no other hyperscaler has matched it.</p>
+    </div>
+</section>
+
+<section class="slide" id="slide-12">
+    <div class="slide-number">12</div>
+    <h2>Cheat Sheet</h2>
+    <ul>
+        <li><strong>ICI</strong> = Inter-Chip Interconnect. Custom Google electrical SerDes with hardware all-reduce. Sub-microsecond chip-to-chip latency. Up to 1.2 TB/s bidir per chip on Ironwood.</li>
+        <li><strong>2D torus</strong> (4 ICI ports) for e-class &mdash; 256-chip pods. <strong>3D torus</strong> (6 ICI ports) for p-class &mdash; thousands-of-chip pods.</li>
+        <li><strong>Cube</strong> = physical 4&times;4&times;4 = 64 chip unit. <strong>Slice</strong> = logical sub-pod allocated to a job. <strong>Pod</strong> = full ICI-coherent domain.</li>
+        <li><strong>Palomar OCS</strong> = 136-port (128+8 spares) 3D-MEMS optical circuit switch. Reconfigures in &lt;1 ms. &lt;5% of system cost, &lt;3% of system power.</li>
+        <li><strong>Twisted torus</strong> = OCS-only topology with offset wrap-arounds; cuts diameter by ~&radic;2 vs standard torus.</li>
+        <li><strong>Hardware all-reduce</strong> on the ICI controllers &mdash; collectives don't steal compute from the matmul.</li>
+        <li><strong>Healing</strong> via OCS hot-spare cube reroute on chip failure &mdash; sub-second pause vs minutes for checkpoint/restart.</li>
+        <li><strong>Multipod</strong> = multi-pod jobs over Jupiter DCN &mdash; up to ~100,000 chips on Trillium, 13 Pb/s bisection.</li>
+        <li><strong>Mission Apollo (2022)</strong> = OCS rolled out across the rest of Google's datacenter networks. Palomar is the TPU-specific cousin.</li>
+    </ul>
+
+    <div class="callout">
+        <div class="callout-label">Read next</div>
+        <p>Deck <strong>11 &mdash; Software Stack</strong> shows how XLA and JAX use this pod fabric &mdash; mesh, sharding, GSPMD, Pathways. Deck <strong>12 &mdash; TPU vs GPU</strong> contrasts the 3D-torus + OCS approach with NVIDIA's NVLink + InfiniBand fat-tree.</p>
+    </div>
+</section>
+
+<footer class="footer">
+    <p>Part of the <a href="https://github.com/BrendanJamesLynskey/LLM_Hub_Google_TPUs">Google TPUs</a> series. Sources: Jouppi et al., "TPU v4: An Optically Reconfigurable Supercomputer" ISCA 2023 (arXiv:2304.01433); "Mission Apollo: A Modern Datacenter Network with OCS" (arXiv:2208.10041); USENIX NSDI 2024 "Resiliency at Scale"; Cloud TPU multislice docs.</p>
+</footer>
+
+</body>
+</html>
