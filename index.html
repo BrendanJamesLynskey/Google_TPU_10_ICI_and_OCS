@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <style>
-        :root { --bg-primary:#0a0a0a; --bg-card:#0d1117; --bg-code:#161b22; --text-primary:#e6edf3; --text-secondary:#8b949e; --accent:#4285F4; --accent-dim:#4285F444; --accent-glow:#4285F433; --accent-2:#EA4335; --accent-3:#FBBC04; --accent-4:#34A853; --border:#21262d; --font-display:'Space Grotesk',sans-serif; --font-mono:'JetBrains Mono','Fira Code',monospace; --font-body:'Inter',sans-serif; --max-width:900px; }
+        :root { --bg-primary:#f3efe6; --bg-card:#ebe6da; --bg-code:#e2dcce; --text-primary:#1b1a18; --text-secondary:#625c52; --accent:#355ec6; --accent-dim:#355ec644; --accent-glow:#355ec61a; --accent-2:#ee3218; --accent-3:#8b6a0d; --accent-4:#458f5d; --border:#d0c9b8; --font-display:'Space Grotesk',sans-serif; --font-mono:'JetBrains Mono','Fira Code',monospace; --font-body:'Inter',sans-serif; --max-width:900px; }
         *,*::before,*::after { box-sizing:border-box; margin:0; padding:0; }
         html { scroll-behavior:smooth; }
         body { background:var(--bg-primary); color:var(--text-primary); font-family:var(--font-body); font-size:17px; line-height:1.7; overflow-x:hidden; }
@@ -38,7 +38,7 @@
         th { background:var(--bg-code); color:var(--accent); font-weight:600; text-align:left; padding:0.75rem 1rem; border-bottom:1px solid var(--border); font-family:var(--font-display); white-space:nowrap; }
         td { padding:0.6rem 1rem; border-bottom:1px solid var(--border); color:var(--text-secondary); vertical-align:top; }
         tr:last-child td { border-bottom:none; }
-        tr:nth-child(even) td { background:rgba(13,17,23,0.5); }
+        tr:nth-child(even) td { background:rgba(235,230,218,0.5); }
         .diagram-grid { display:grid; gap:0.75rem; margin:1.5rem 0; padding:1.5rem; background:var(--bg-card); border:1px solid var(--border); border-radius:8px; }
         .diagram-grid.cols-2 { grid-template-columns:1fr 1fr; }
         .diagram-grid.cols-3 { grid-template-columns:1fr 1fr 1fr; }
@@ -149,12 +149,12 @@
     <div class="canvas-wrap">
         <svg viewBox="0 0 800 280" width="800" height="280" xmlns="http://www.w3.org/2000/svg">
             <style>
-                .chip { fill:#161b22; stroke:#21262d; stroke-width:1; }
-                .acc { fill:rgba(66,133,244,0.4); stroke:#4285F4; }
-                .lnk { stroke:#4285F4; stroke-width:1.4; fill:none; }
-                .lnk.zaxis { stroke:#34A853; stroke-width:1.4; }
-                .lbl { fill:#e6edf3; font-family:'Space Grotesk',sans-serif; font-size:13px; text-anchor:middle; }
-                .sublbl { fill:#8b949e; font-family:'JetBrains Mono',monospace; font-size:10px; text-anchor:middle; }
+                .chip { fill:#e2dcce; stroke:#d0c9b8; stroke-width:1; }
+                .acc { fill:rgba(53,94,198,0.4); stroke:#355ec6; }
+                .lnk { stroke:#355ec6; stroke-width:1.4; fill:none; }
+                .lnk.zaxis { stroke:#458f5d; stroke-width:1.4; }
+                .lbl { fill:#1b1a18; font-family:'Space Grotesk',sans-serif; font-size:13px; text-anchor:middle; }
+                .sublbl { fill:#625c52; font-family:'JetBrains Mono',monospace; font-size:10px; text-anchor:middle; }
             </style>
             <!-- 2D torus -->
             <text x="170" y="22" class="lbl">2D Torus (e-class) — 4 ICI links/chip</text>
@@ -321,12 +321,12 @@
     <div class="canvas-wrap">
         <svg viewBox="0 0 700 220" width="700" height="220" xmlns="http://www.w3.org/2000/svg">
             <style>
-                .chip { fill:#161b22; stroke:#21262d; }
-                .acc { fill:rgba(66,133,244,0.4); stroke:#4285F4; }
-                .lnk { stroke:#4285F4; fill:none; }
-                .twist { stroke:#EA4335; stroke-width:2; fill:none; stroke-dasharray:4 3; }
-                .lbl { fill:#e6edf3; font-family:'Space Grotesk',sans-serif; font-size:12px; text-anchor:middle; }
-                .sublbl { fill:#8b949e; font-family:'JetBrains Mono',monospace; font-size:10px; text-anchor:middle; }
+                .chip { fill:#e2dcce; stroke:#d0c9b8; }
+                .acc { fill:rgba(53,94,198,0.4); stroke:#355ec6; }
+                .lnk { stroke:#355ec6; fill:none; }
+                .twist { stroke:#ee3218; stroke-width:2; fill:none; stroke-dasharray:4 3; }
+                .lbl { fill:#1b1a18; font-family:'Space Grotesk',sans-serif; font-size:12px; text-anchor:middle; }
+                .sublbl { fill:#625c52; font-family:'JetBrains Mono',monospace; font-size:10px; text-anchor:middle; }
             </style>
             <text x="160" y="22" class="lbl">Standard 4×4 torus</text>
             <g>
