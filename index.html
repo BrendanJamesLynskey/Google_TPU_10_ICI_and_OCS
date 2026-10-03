@@ -209,7 +209,7 @@
     <h3>Diameter and bisection</h3>
     <ul>
         <li><strong>2D torus</strong>, 16&times;16 = 256 chips: diameter 16 hops, bisection 32 links.</li>
-        <li><strong>3D torus</strong>, 16&times;24&times;24 = 9,216 chips: diameter ~32 hops, bisection ~1,150 links.</li>
+        <li><strong>3D torus</strong>, 16&times;24&times;24 = 9,216 chips: diameter ~32 hops, bisection ~770 links (2 &times; 16 &times; 24).</li>
         <li>For matched chip count, 3D torus has dramatically lower diameter and dramatically higher bisection &mdash; both critical for collective communication.</li>
     </ul>
 
@@ -380,7 +380,7 @@
         <li><strong>All-gather along Z, Y, X</strong>, in reverse, to broadcast the final result.</li>
     </ol>
 
-    <p>Total time is approximately <em>(N-1)/N</em> &times; (gradient size / per-link bandwidth) per axis. For a 9,216-chip pod arranged as 16&times;24&times;24 with 600 GB/s per link per direction, an all-reduce on a 1 GB gradient takes well under 10 ms wall-clock.</p>
+    <p>Total time is approximately <em>(N-1)/N</em> &times; (gradient size / per-link bandwidth) per axis. For a 9,216-chip pod arranged as 16&times;24&times;24 with ~100 GB/s per link per direction (1.2 TB/s bidirectional over 6 links), an all-reduce on a 1 GB gradient takes roughly 10 ms per axis by this formula.</p>
 
     <div class="callout">
         <div class="callout-label">Hardware all-reduce</div>
@@ -455,7 +455,7 @@
             <tbody>
                 <tr><td>v1</td><td>—</td><td>0 (PCIe only)</td><td>—</td><td>1 chip</td></tr>
                 <tr><td>v2</td><td>~62 GB/s aggregate</td><td>4</td><td>2D torus</td><td>256</td></tr>
-                <tr><td>v3</td><td>~82 GB/s aggregate (estimated)</td><td>4</td><td>2D torus</td><td>1024</td></tr>
+                <tr><td>v3</td><td>~280 GB/s (4 links @ 70 GB/s)</td><td>4</td><td>2D torus</td><td>1024</td></tr>
                 <tr><td>v4</td><td>~300 GB/s</td><td>6</td><td>3D torus + OCS</td><td>4096</td></tr>
                 <tr><td>v5e</td><td>400 GB/s</td><td>4</td><td>2D torus</td><td>256</td></tr>
                 <tr><td>v5p</td><td>1.2 TB/s</td><td>6</td><td>3D torus + OCS</td><td>8960</td></tr>
@@ -467,7 +467,7 @@
 
     <h3>Reading the trends</h3>
     <ul>
-        <li>p-class chips have always doubled the ICI bandwidth of the previous p-class. v4 (300 GB/s) &rarr; v5p (1.2 TB/s) &rarr; Ironwood (1.2 TB/s, but at higher per-link efficiency).</li>
+        <li>p-class ICI went v4 (300 GB/s) &rarr; v5p (1.2 TB/s, 4&times;) &rarr; Ironwood (1.2 TB/s, unchanged per chip).</li>
         <li>e-class chips track p-class with a one-generation lag, at half the port count. Trillium's 800 GB/s on 4 ports is comparable per-link to v5p's 1.2 TB/s on 6.</li>
         <li>Per-link bandwidth keeps growing &mdash; modern SerDes runs at 200 Gbps per lane and is on track for 400 Gbps.</li>
     </ul>
