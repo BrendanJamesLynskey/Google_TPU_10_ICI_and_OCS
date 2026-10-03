@@ -122,7 +122,7 @@
             <h4>Physical</h4>
             <ul>
                 <li>Custom Google electrical SerDes lanes, several per ICI port.</li>
-                <li>Per-port bidirectional bandwidth grew from ~62 GB/s aggregate (v2) to <strong>1.2 TB/s bidir</strong> (Ironwood).</li>
+                <li>Per-chip ICI grew from 4 links &times; 62 GB/s per direction (v2) to <strong>1.2 TB/s bidir</strong> (Ironwood).</li>
                 <li>Ports per chip: 4 (v2/v3, 2D torus) or 6 (v4 onwards p-class, 3D torus); 4 on the e-class chips.</li>
                 <li>Cabled (between cubes / racks) and on-package (within a board) variants.</li>
             </ul>
@@ -454,8 +454,8 @@
             <thead><tr><th>Generation</th><th>Per-chip ICI (bidir)</th><th>Ports</th><th>Topology</th><th>Pod</th></tr></thead>
             <tbody>
                 <tr><td>v1</td><td>—</td><td>0 (PCIe only)</td><td>—</td><td>1 chip</td></tr>
-                <tr><td>v2</td><td>~62 GB/s aggregate</td><td>4</td><td>2D torus</td><td>256</td></tr>
-                <tr><td>v3</td><td>~280 GB/s (4 links @ 70 GB/s)</td><td>4</td><td>2D torus</td><td>1024</td></tr>
+                <tr><td>v2</td><td>4 &times; 62 GB/s per direction (496 Gbit/s links)</td><td>4</td><td>2D torus</td><td>256</td></tr>
+                <tr><td>v3</td><td>4 links &times; 70&ndash;82 GB/s</td><td>4</td><td>2D torus</td><td>1024</td></tr>
                 <tr><td>v4</td><td>~300 GB/s</td><td>6</td><td>3D torus + OCS</td><td>4096</td></tr>
                 <tr><td>v5e</td><td>400 GB/s</td><td>4</td><td>2D torus</td><td>256</td></tr>
                 <tr><td>v5p</td><td>1.2 TB/s</td><td>6</td><td>3D torus + OCS</td><td>8960</td></tr>
